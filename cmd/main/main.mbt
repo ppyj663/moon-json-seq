@@ -6,8 +6,8 @@ fn print_events(events : Array[@lib.Event]) -> Unit {
         println(
           "value at byte " + offset.to_string() + ": " + value.stringify(),
         )
-      @lib.Error(message, offset) =>
-        println("error at byte " + offset.to_string() + ": " + message)
+      @lib.Error(kind, offset) =>
+        println("error at byte " + offset.to_string() + ": " + kind.message())
     }
   }
 }

@@ -3,11 +3,32 @@
 pub let media_type : String = "application/json-seq"
 
 ///|
+/// A typed recoverable record diagnostic.
+pub enum DiagnosticKind {
+  BytesBeforeFirstRs
+  InvalidUtf8
+  InvalidJson
+  TruncatedScalar
+  RecordTooLarge
+}
+
+///|
+pub fn DiagnosticKind::message(self : DiagnosticKind) -> String {
+  match self {
+    BytesBeforeFirstRs => "bytes before first RS"
+    InvalidUtf8 => "invalid UTF-8"
+    InvalidJson => "invalid JSON"
+    TruncatedScalar => "top-level scalar lacks trailing whitespace"
+    RecordTooLarge => "record exceeds max_record_bytes"
+  }
+}
+
+///|
 /// A decoded JSON value or a recoverable record error. Offsets are absolute
 /// byte positions: for values and record errors, the first byte after RS.
 pub enum Event {
   Value(Json, Int)
-  Error(String, Int)
+  Error(DiagnosticKind, Int)
 }
 
 ///|
@@ -66,12 +87,12 @@ fn is_json_space(byte : Byte) -> Bool {
 ///|
 fn Decoder::close_record(self : Decoder, events : Array[Event]) -> Unit {
   if self.overflowed {
-    events.push(Error("record exceeds max_record_bytes", self.start))
+    events.push(Error(RecordTooLarge, self.start))
   } else if !self.buffer.is_empty() {
     let bytes = Bytes::from_array(self.buffer)
     let text = @utf8.decode(bytes) catch {
       _ => {
-        events.push(Error("invalid UTF-8", self.start))
+        events.push(Error(InvalidUtf8, self.start))
         return
       }
     }
@@ -87,15 +108,13 @@ fn Decoder::close_record(self : Decoder, events : Array[Event]) -> Unit {
         lead == 0x66 ||
         lead == 0x6e
       if scalar && !is_json_space(self.buffer[self.buffer.length() - 1]) {
-        events.push(
-          Error("top-level scalar lacks trailing whitespace", self.start),
-        )
+        events.push(Error(TruncatedScalar, self.start))
         return
       }
     }
     let value = @json.parse(text) catch {
       _ => {
-        events.push(Error("invalid JSON", self.start))
+        events.push(Error(InvalidJson, self.start))
         return
       }
     }
@@ -120,7 +139,7 @@ pub fn Decoder::feed(
       if self.in_record {
         self.close_record(events)
       } else if self.preamble_seen {
-        events.push(Error("bytes before first RS", self.preamble_start))
+        events.push(Error(BytesBeforeFirstRs, self.preamble_start))
       }
       self.in_record = true
       self.buffer = []
@@ -155,7 +174,7 @@ pub fn Decoder::finish(self : Decoder) -> Result[Array[Event], String] {
   if self.in_record {
     self.close_record(events)
   } else if self.preamble_seen {
-    events.push(Error("bytes before first RS", self.preamble_start))
+    events.push(Error(BytesBeforeFirstRs, self.preamble_start))
   }
   Ok(events)
 }

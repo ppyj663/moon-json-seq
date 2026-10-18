@@ -32,7 +32,7 @@ test "recover after malformed JSON and consecutive RS" {
   let events = decoder.feed(b"\x1e\x1e{bad}\n\x1e{}\n").unwrap()
   assert_eq(events.length(), 1)
   match events[0] {
-    Error(message, 2) => assert_eq(message, "invalid JSON")
+    Error(InvalidJson, 2) => ()
     _ => fail("expected JSON error")
   }
   let final_events = decoder.finish().unwrap()
@@ -47,8 +47,7 @@ test "truncated scalar and valid scalar" {
   let decoder = @json_seq.Decoder::new(100).unwrap()
   let events = decoder.feed(b"\x1e123\x1etrue\n").unwrap()
   match events[0] {
-    Error(message, 1) =>
-      assert_eq(message, "top-level scalar lacks trailing whitespace")
+    Error(TruncatedScalar, 1) => ()
     _ => fail("expected truncation diagnostic")
   }
   let final_events = decoder.finish().unwrap()
@@ -63,7 +62,7 @@ test "invalid UTF8 recovers" {
   let decoder = @json_seq.Decoder::new(100).unwrap()
   let events = decoder.feed(b"\x1e\xff\x1e{}\n").unwrap()
   match events[0] {
-    Error(message, 1) => assert_eq(message, "invalid UTF-8")
+    Error(InvalidUtf8, 1) => ()
     _ => fail("expected UTF-8 diagnostic")
   }
   assert_eq(decoder.finish().unwrap().length(), 1)
@@ -74,7 +73,7 @@ test "oversize record discards until separator" {
   let decoder = @json_seq.Decoder::new(3).unwrap()
   let events = decoder.feed(b"\x1e1234\x1e{}\n").unwrap()
   match events[0] {
-    Error(message, 1) => assert_eq(message, "record exceeds max_record_bytes")
+    Error(RecordTooLarge, 1) => ()
     _ => fail("expected size diagnostic")
   }
   match decoder.finish().unwrap()[0] {
@@ -89,7 +88,7 @@ test "preamble and lifecycle errors" {
   let decoder = @json_seq.Decoder::new(100).unwrap()
   let events = decoder.feed(b"oops\x1e{}\n").unwrap()
   match events[0] {
-    Error(message, 0) => assert_eq(message, "bytes before first RS")
+    Error(BytesBeforeFirstRs, 0) => ()
     _ => fail("expected preamble diagnostic")
   }
   assert_eq(decoder.finish().unwrap().length(), 1)
@@ -126,6 +125,7 @@ test "empty input and empty frames produce no records" {
   assert_eq(decoder.finish().unwrap().length(), 0)
 }
 
+///|
 test "one-byte chunks preserve event order" {
   let input = b"\x1e{}\n\x1e{bad}\n\x1e[1]\n"
   let decoder = @json_seq.Decoder::new(100).unwrap()
@@ -144,7 +144,7 @@ test "one-byte chunks preserve event order" {
     _ => fail("expected first value")
   }
   match events[1] {
-    Error(message, 5) => assert_eq(message, "invalid JSON")
+    Error(InvalidJson, 5) => ()
     _ => fail("expected middle error")
   }
   match events[2] {
@@ -153,6 +153,7 @@ test "one-byte chunks preserve event order" {
   }
 }
 
+///|
 test "pretty-printed JSON may contain newlines" {
   let decoder = @json_seq.Decoder::new(100).unwrap()
   let _ = decoder.feed(b"\x1e{\n  \"x\": 1\n}\n").unwrap()
@@ -162,6 +163,7 @@ test "pretty-printed JSON may contain newlines" {
   }
 }
 
+///|
 test "encoder output decodes to the same scalar" {
   let original = @json.parse("123")
   let decoder = @json_seq.Decoder::new(100).unwrap()

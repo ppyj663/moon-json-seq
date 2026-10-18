@@ -10,10 +10,10 @@ JSON Lines uses a newline to delimit values. RFC 7464 uses a record separator, s
 
 - `encode(Json) -> Bytes` writes one compact JSON record with RS and LF.
 - `Decoder::new(max_record_bytes)` creates a bounded incremental decoder. The limit must be positive and counts bytes after RS, including LF.
-- `feed(Bytes)` returns ordered `Value(Json, offset)` or `Error(message, offset)` events for records closed by a later RS. `finish()` closes the final record. Offsets are zero-based byte positions of the first byte after RS; a preamble error points to the first preamble byte.
+- `feed(Bytes)` returns ordered `Value(Json, offset)` or `Error(DiagnosticKind, offset)` events for records closed by a later RS. `finish()` closes the final record. Offsets are zero-based byte positions of the first byte after RS; a preamble error points to the first preamble byte.
 - Invalid UTF-8, invalid JSON, incomplete top-level numbers/`true`/`false`/`null` without trailing JSON whitespace, and oversized records produce diagnostics. Parsing resumes at the next RS. Empty frames are ignored. A second `finish()` or `feed()` after `finish()` returns `Err`.
 
-The decoder's retained framing state holds at most one configured record plus fixed state; a returned event array grows with the number and size of decoded values in that call. It does not read files itself; callers supply byte chunks from their own I/O layer. Diagnostics currently use stable short messages rather than a dedicated error enum. The parser uses MoonBit's standard JSON depth behavior. On a target with 32-bit `Int`, byte offsets can wrap for extremely long streams.
+The decoder's retained framing state holds at most one configured record plus fixed state; a returned event array grows with the number and size of decoded values in that call. It does not read files itself; callers supply byte chunks from their own I/O layer. Diagnostics have typed kinds and `kind.message()` supplies a human-readable description. The parser uses MoonBit's standard JSON depth behavior. On a target with 32-bit `Int`, byte offsets can wrap for extremely long streams.
 
 ## Run locally
 
@@ -43,7 +43,7 @@ Add `"ppyj663/json_seq" @seq` to your package imports after publication. Until t
 ```moonbit
 let decoder = @seq.Decoder::new(1024 * 1024).unwrap()
 let events = decoder.feed(input_chunk).unwrap()
-// Process each @seq.Value(value, offset) or @seq.Error(message, offset).
+// Process each @seq.Value(value, offset) or @seq.Error(kind, offset).
 let final_events = decoder.finish().unwrap()
 let wire_bytes = @seq.encode(value)
 ```
