@@ -19,7 +19,7 @@ repository = ""
 
 license = "Apache-2.0"
 
-keywords = []
+keywords = [ "json", "json-seq", "streaming", "rfc7464" ]
 
 preferred_target = "wasm-gc"
 
