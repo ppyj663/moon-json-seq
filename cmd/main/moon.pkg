@@ -1,5 +1,6 @@
-// import {
-//   "ppyj663/json_seq" @lib,
-// }
+import {
+  "ppyj663/json_seq" @lib,
+  "moonbitlang/core/json",
+}
 
 pkgtype(kind: "executable")

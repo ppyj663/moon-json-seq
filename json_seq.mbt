@@ -1,14 +1,17 @@
-///| RFC 7464 record separator and media type.
+///|
+/// RFC 7464 record separator and media type.
 pub let media_type : String = "application/json-seq"
 
-///| A decoded JSON value or a recoverable record error. Offsets are absolute
+///|
+/// A decoded JSON value or a recoverable record error. Offsets are absolute
 /// byte positions: for values and record errors, the first byte after RS.
 pub enum Event {
   Value(Json, Int)
   Error(String, Int)
 }
 
-///| Produce one RFC 7464 record: RS, compact UTF-8 JSON, LF.
+///|
+/// Produce one RFC 7464 record: RS, compact UTF-8 JSON, LF.
 pub fn encode(value : Json) -> Bytes {
   let body = @utf8.encode(value.stringify())
   let out : Array[Byte] = [0x1e]
@@ -19,7 +22,8 @@ pub fn encode(value : Json) -> Bytes {
   Bytes::from_array(out)
 }
 
-///| Incremental decoder. It retains at most max_record_bytes bytes of a
+///|
+/// Incremental decoder. It retains at most max_record_bytes bytes of a
 /// record. Once a record exceeds the limit, data is discarded until the next
 /// RS. A decoder cannot be fed after finish.
 pub struct Decoder {
@@ -34,7 +38,8 @@ pub struct Decoder {
   mut finished : Bool
 }
 
-///| A positive limit is required. The recommended starting value is 1 MiB.
+///|
+/// A positive limit is required. The recommended starting value is 1 MiB.
 pub fn Decoder::new(max_record_bytes : Int) -> Result[Decoder, String] {
   if max_record_bytes <= 0 {
     Err("max_record_bytes must be positive")
@@ -53,16 +58,18 @@ pub fn Decoder::new(max_record_bytes : Int) -> Result[Decoder, String] {
   }
 }
 
+///|
 fn is_json_space(byte : Byte) -> Bool {
   byte == 0x20 || byte == 0x09 || byte == 0x0a || byte == 0x0d
 }
 
+///|
 fn Decoder::close_record(self : Decoder, events : Array[Event]) -> Unit {
   if self.overflowed {
     events.push(Error("record exceeds max_record_bytes", self.start))
   } else if !self.buffer.is_empty() {
     let bytes = Bytes::from_array(self.buffer)
-    let text = try @utf8.decode(bytes) catch {
+    let text = @utf8.decode(bytes) catch {
       _ => {
         events.push(Error("invalid UTF-8", self.start))
         return
@@ -74,14 +81,19 @@ fn Decoder::close_record(self : Decoder, events : Array[Event]) -> Unit {
     }
     if first < self.buffer.length() {
       let lead = self.buffer[first]
-      let scalar = lead == 0x2d || (lead >= 0x30 && lead <= 0x39) ||
-        lead == 0x74 || lead == 0x66 || lead == 0x6e
+      let scalar = lead == 0x2d ||
+        (lead >= 0x30 && lead <= 0x39) ||
+        lead == 0x74 ||
+        lead == 0x66 ||
+        lead == 0x6e
       if scalar && !is_json_space(self.buffer[self.buffer.length() - 1]) {
-        events.push(Error("top-level scalar lacks trailing whitespace", self.start))
+        events.push(
+          Error("top-level scalar lacks trailing whitespace", self.start),
+        )
         return
       }
     }
-    let value = try @json.parse(text) catch {
+    let value = @json.parse(text) catch {
       _ => {
         events.push(Error("invalid JSON", self.start))
         return
@@ -91,9 +103,13 @@ fn Decoder::close_record(self : Decoder, events : Array[Event]) -> Unit {
   }
 }
 
-///| Consume a byte chunk and return all records closed by RS in this chunk.
+///|
+/// Consume a byte chunk and return all records closed by RS in this chunk.
 /// Call finish to close the final record.
-pub fn Decoder::feed(self : Decoder, chunk : Bytes) -> Result[Array[Event], String] {
+pub fn Decoder::feed(
+  self : Decoder,
+  chunk : Bytes,
+) -> Result[Array[Event], String] {
   if self.finished {
     return Err("decoder already finished")
   }
@@ -128,7 +144,8 @@ pub fn Decoder::feed(self : Decoder, chunk : Bytes) -> Result[Array[Event], Stri
   Ok(events)
 }
 
-///| Close the final record. Repeated calls return an error.
+///|
+/// Close the final record. Repeated calls return an error.
 pub fn Decoder::finish(self : Decoder) -> Result[Array[Event], String] {
   if self.finished {
     return Err("decoder already finished")
