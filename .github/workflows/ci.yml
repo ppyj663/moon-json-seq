@@ -27,3 +27,9 @@ jobs:
         run: moon build --target wasm-gc
       - name: Example
         run: moon run cmd/main --target wasm-gc
+      - name: Check native
+        run: moon check --target native --deny-warn
+      - name: Test native
+        run: moon test --target native --deny-warn
+      - name: Build native
+        run: moon build --target native

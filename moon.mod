@@ -23,4 +23,4 @@ keywords = [ "json", "json-seq", "streaming", "rfc7464" ]
 
 preferred_target = "wasm-gc"
 
-description = "RFC 7464 JSON Text Sequences streaming codec for MoonBit"
+description = "RFC 7464 JSON Text Sequences streaming toolkit for MoonBit"
