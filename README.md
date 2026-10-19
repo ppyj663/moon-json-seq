@@ -13,7 +13,7 @@ JSON Lines uses a newline to delimit values. RFC 7464 uses a record separator, s
 - `feed(Bytes)` returns ordered `Value(Json, offset)` or `Error(DiagnosticKind, offset)` events for records closed by a later RS. `finish()` closes the final record. Offsets are zero-based byte positions of the first byte after RS; a preamble error points to the first preamble byte.
 - Invalid UTF-8, invalid JSON, incomplete top-level numbers/`true`/`false`/`null` without trailing JSON whitespace, and oversized records produce diagnostics. Parsing resumes at the next RS. Empty frames are ignored. A second `finish()` or `feed()` after `finish()` returns `Err`.
 
-The decoder's retained framing state holds at most one configured record plus fixed state; a returned event array grows with the number and size of decoded values in that call. It does not read files itself; callers supply byte chunks from their own I/O layer. Diagnostics have typed kinds and `kind.message()` supplies a human-readable description. The parser uses MoonBit's standard JSON depth behavior. On a target with 32-bit `Int`, byte offsets can wrap for extremely long streams.
+The decoder's retained framing state holds at most one configured record plus fixed state; a returned event array grows with the number and size of decoded values in that call. It does not read files itself; callers supply byte chunks from their own I/O layer. Diagnostics have typed kinds and `kind.message()` supplies a human-readable description. The parser uses MoonBit's standard JSON depth behavior. Byte offsets use 32-bit `Int` and can wrap for extremely long streams.
 
 ## Run locally
 
