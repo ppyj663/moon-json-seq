@@ -67,36 +67,10 @@ fn is_json_space(byte : Byte) -> Bool {
 
 ///|
 fn decode_frame(frame : FrameRecord, events : Array[Event]) -> Unit {
-  let bytes = frame.bytes
-  let text = @utf8.decode(bytes) catch {
-    _ => {
-      events.push(Error(InvalidUtf8, frame.start))
-      return
-    }
+  match inspect_frame(frame).outcome {
+    Ok(value) => events.push(Value(value, frame.start))
+    Err(kind) => events.push(Error(kind, frame.start))
   }
-  let mut first = 0
-  while first < bytes.length() && is_json_space(bytes[first]) {
-    first = first + 1
-  }
-  if first < bytes.length() {
-    let lead = bytes[first]
-    let scalar = lead == 0x2d ||
-      (lead >= 0x30 && lead <= 0x39) ||
-      lead == 0x74 ||
-      lead == 0x66 ||
-      lead == 0x6e
-    if scalar && !is_json_space(bytes[bytes.length() - 1]) {
-      events.push(Error(TruncatedScalar, frame.start))
-      return
-    }
-  }
-  let value = @json.parse(text) catch {
-    _ => {
-      events.push(Error(InvalidJson, frame.start))
-      return
-    }
-  }
-  events.push(Value(value, frame.start))
 }
 
 ///|
