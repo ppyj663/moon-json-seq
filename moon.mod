@@ -15,7 +15,7 @@ version = "0.1.0"
 
 readme = "README.md"
 
-repository = ""
+repository = "https://github.com/ppyj663/moon-json-seq"
 
 license = "Apache-2.0"
 
